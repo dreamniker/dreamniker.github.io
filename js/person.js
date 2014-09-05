@@ -84,6 +84,7 @@ Person.prototype.goInDirect = function( direct ) {
 };
 
 Person.prototype.canTurn = function ( x , y , direct ){
+    if(this.maze.terrainMatrix[x][y].bridge == 1) return false;
     if ( this.maze.canGo ( x , y , (direct + 1) % 4 ) ) return true;
     if ( this.maze.canGo ( x , y , (direct - 1 + 4) % 4 ) ) return true;
     return false;

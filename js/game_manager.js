@@ -12,7 +12,7 @@ assets = new Assets();
 assets.mazeSprite.onload = function(){
 	maze=new Maze( playgroundWidth , playgroundWidth , mazeCanvas ,assets);
 	
-	var wh = 5;
+	var wh = 7;
 	
 	
 	maze.generate(wh,wh,0,0);

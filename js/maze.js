@@ -4,7 +4,8 @@
 //МОГУТ БЫТЬ УТЕЧКИ ПАМЯТИ ПРИ ИЗ-ЗА МАТРИЦ ПОСЕЩАЕМОСТИ И ПРОХОДИМОСТИ
 
 function Maze( playgroundWidth , playgroundHeight , mazeCanvas , assets ){
-	
+    this.bridgesFlag = true;
+    this.cyclesFlag = true;
 	/*
 		Если еденицу сдвинуть на доступное направление то получим часть кода
 	
@@ -52,38 +53,13 @@ function Maze( playgroundWidth , playgroundHeight , mazeCanvas , assets ){
     this.cageWidth = 0;
 }
 
-Maze.prototype.createFullMazeSprite = function(){
-    this.sprite = this.assets.mazeSprite;
-
-    this.spriteCanvas = document.createElement("canvas");
-    this.spriteCTX = this.spriteCanvas.getContext("2d");
-    this.spriteCanvas.height = this.tiles.width;
-    this.spriteCanvas.width = this.tiles.width * 6;
-    this.spriteCTX.drawImage(this.sprite , 0 , 0);
-
-    this.fullSprite = document.createElement("canvas");
-    this.fullSpriteCTX = this.fullSprite.getContext("2d");
-    this.fullSprite.height = this.tiles.width;
-    this.fullSprite.width = this.tiles.width * 16;
-
-    for(var tile = 0; tile < this.tiles.quantity; tile++){
-        this.fullSpriteCTX.save();
-        this.fullSpriteCTX.translate(   tile * this.tiles.width  + this.tiles.width / 2 , this.tiles.width / 2);
-        this.fullSpriteCTX.rotate( this.tiles.turn[tile]);
-        this.fullSpriteCTX.drawImage(
-            this.spriteCanvas,
-                this.tiles.numb[tile] * this.tiles.width , 0 , this.tiles.width , this.tiles.width ,
-                - this.tiles.width / 2 ,  - this.tiles.width / 2 , this.tiles.width , this.tiles.width );
-        this.fullSpriteCTX.restore();
-    }
-}
 
 
 Maze.prototype.generate = function( width , height , personPositionX , personPositionY ){
     //Координаты пробивателя стен в лабиринте
     this.destroyer = {
-        x : personPositionX,
-        y : personPositionY,
+        x : personPositionX + 1,
+        y : personPositionY + 1,
         step : 1,
         wayX : [],
         wayY : [],
@@ -95,8 +71,8 @@ Maze.prototype.generate = function( width , height , personPositionX , personPos
 
 
 
-    this.width = width;
-    this.height = height;
+    this.width = width + 2;
+    this.height = height + 2;
     this.terrainMatrix = [];
 
     //Просчитываем размеры для прорисовки
@@ -104,7 +80,7 @@ Maze.prototype.generate = function( width , height , personPositionX , personPos
     this.wallWidth = this.playgroundWidth / ((this.width ) * (del + 1) + 1);
     this.cageWidth = this.wallWidth * del;
 */
-	this.cageWidth = this.playgroundWidth / ( this.width + 2 );
+	this.cageWidth = this.playgroundWidth / this.width;
 	
     for(var x = 0; x < width + 3; x++){
         this.terrainMatrix[ x ] = [];
@@ -112,14 +88,19 @@ Maze.prototype.generate = function( width , height , personPositionX , personPos
             this.terrainMatrix[ x ][ y ]={
                 left_wall : true,
                 up_wall : true,
-                bridge : false,
+                right_wall : true,
+                down_wall : true,
+                bridge : 0,
 				tileIndex : 0,
                 step : 0
             };
+            if(x == 0 || y == 0 || x == this.width - 1 || y == this.height - 1){
+                this.terrainMatrix[ x ][ y ].step = -1;
+            }
         }
     }
     this.terrainMatrix[ this.destroyer.x ][ this.destroyer.y ].step = 1;
-    var maxChainLength = width;
+    var maxChainLength = width * 2;
 
     while (this.destroyer.wayFirst < this.destroyer.wayLength ) {
         //Пробиваем стены и создаем одну цепь лабиринта
@@ -128,9 +109,27 @@ Maze.prototype.generate = function( width , height , personPositionX , personPos
             if (direct == -1) {
                 break;
             }
-
-            this.destroyWall(this.destroyer.x, this.destroyer.y, direct);
-            this.goDestroyer(direct);
+            if( this.terrainMatrix[this.normalizeX(this.destroyer.x + this.DIRECT.x[ direct ]) ][ this.normalizeY(this.destroyer.y + this.DIRECT.y[ direct ]) ].step == 0) {
+                this.destroyWall(this.destroyer.x, this.destroyer.y, direct);
+                this.goDestroyer(direct , false);
+            }else if (this.terrainMatrix[this.normalizeX(this.destroyer.x + this.DIRECT.x[ direct ]) ][ this.normalizeY(this.destroyer.y + this.DIRECT.y[ direct ]) ].step == -1){
+                this.destroyWall(this.destroyer.x, this.destroyer.y, direct);
+                this.goDestroyer(direct , false);
+                this.destroyWall(this.destroyer.x, this.destroyer.y, direct);
+                this.goDestroyer(direct , true);
+                this.destroyWall(this.destroyer.x, this.destroyer.y, direct);
+                this.goDestroyer(direct , false);
+            }
+            else{
+                this.destroyWall(this.destroyer.x, this.destroyer.y, direct);
+                this.terrainMatrix[ this.destroyer.x ][ this.destroyer.y ].bridge = 2;
+                this.goDestroyer(direct , true);
+                this.destroyWall(this.destroyer.x, this.destroyer.y, direct);
+                this.terrainMatrix[ this.destroyer.x ][ this.destroyer.y ].bridge = 1;
+                this.goDestroyer(direct , false);
+                this.terrainMatrix[ this.destroyer.x ][ this.destroyer.y ].bridge = 2;
+                break;
+            }
 
             //Если длина цепи слишком большая, прервать построение этой цепи и начать следующую
             if(this.terrainMatrix[ this.destroyer.x ][ this.destroyer.y ].step > maxChainLength){
@@ -148,45 +147,19 @@ Maze.prototype.generate = function( width , height , personPositionX , personPos
 
         this.destroyer.wayFirst++;
     }
-    this.addBorderCages();
+    //this.addBorderCages();
 	this.createImageOfMaze( this.canvas );
 	
 };
 
-Maze.prototype.addBorderCages = function (){
-    for (var x = this.width; x > 0 ; x--){
-        for (var y = this.height ; y > 0; y--){
-             this.terrainMatrix [ x ][ y ].left_wall = this.terrainMatrix [ x - 1 ][ y - 1 ].left_wall;
-             this.terrainMatrix [ x ][ y ].up_wall = this.terrainMatrix [ x - 1 ][ y - 1 ].up_wall;
-        }
-    }
-    for (var x = 0; x < this.width + 2 ; x++){
-        this.terrainMatrix [ x ][ 0 ].left_wall = true;
-        this.terrainMatrix [ x ][ this.height + 1 ].left_wall = true;
-        this.terrainMatrix [ x ][ 0 ].up_wall = this.terrainMatrix [ x ][ 1 ].up_wall;
-        this.terrainMatrix [ x ][ this.height + 1 ].up_wall = this.terrainMatrix [ x ][ 1 ].up_wall;
-    }
 
-    for (var y = 0; y < this.height + 2 ; y++){
-        this.terrainMatrix [ 0 ][ y ].up_wall = true;
-        this.terrainMatrix [ this.width + 1 ][ y ].up_wall = true;
-        this.terrainMatrix [ 0][ y ].left_wall = this.terrainMatrix [ 1 ][ y ].left_wall;
-        this.terrainMatrix [ this.width + 1 ][ y ].left_wall = this.terrainMatrix [ 1 ][ y ].left_wall;
-    }
-
-
-    this.width+=2;
-    this.height+=2;
-};
-
-
-
-Maze.prototype.goDestroyer = function ( direct ){
+Maze.prototype.goDestroyer = function ( direct , isBridge ){
     this.destroyer.x = this.normalizeX( this.destroyer.x + this.DIRECT.x[direct] );
     this.destroyer.y = this.normalizeX( this.destroyer.y + this.DIRECT.y[direct] );
     this.destroyer.step = this.destroyer.step + 1;
-    this.terrainMatrix[ this.destroyer.x ][ this.destroyer.y ].step = this.destroyer.step;
-
+    if(!isBridge) {
+        this.terrainMatrix[ this.destroyer.x ][ this.destroyer.y ].step = this.destroyer.step;
+    }
     this.destroyer.wayX [ this.destroyer.wayLength ] = this.destroyer.x;
     this.destroyer.wayY [ this.destroyer.wayLength ] = this.destroyer.y;
     this.destroyer.wayLength = this.destroyer.wayLength + 1;
@@ -199,15 +172,19 @@ Maze.prototype.destroyWall = function ( x, y, direct ){
         //Лабиринт цикличный, т.е. после x == width - 1 идет x == 0
         case this.DIRECT.RIGHT:
             this.terrainMatrix[ ( x + 1 ) % this.width ][ y ].left_wall = false;
+            this.terrainMatrix[ x ][ y ].right_wall = false;
             break;
         case this.DIRECT.DOWN:
             this.terrainMatrix[ x ][ ( y + 1 ) % this.height ].up_wall = false;
+            this.terrainMatrix[ x ][ y ].down_wall = false;
             break;
         case this.DIRECT.LEFT:
             this.terrainMatrix[ x ][ y ].left_wall = false;
+            this.terrainMatrix[ ( x - 1 + this.width ) % this.width ][ y ].right_wall = false;
             break;
         case this.DIRECT.UP:
             this.terrainMatrix[ x ][ y ].up_wall = false;
+            this.terrainMatrix[ x ][ ( y - 1 + this.height ) % this.height ].down_wall = false;
             break;
         default :
             console.log("ERROR");
@@ -243,6 +220,12 @@ Maze.prototype.randomPassableDestroyDirect = function( x , y ){
         if(this.canDestroy( x , y, direct)){
             PassableDirects[ numOfPassableDirects ] = direct;
             numOfPassableDirects++;
+        }else if(this.bridgesFlag && this.canDestroy( x + this.DIRECT.x[direct], y + this.DIRECT.y[direct], direct) && !this.canGo( x , y, direct) && this.terrainMatrix[x + this.DIRECT.x[direct] ][ y + this.DIRECT.y[direct]].bridge == 0){
+            PassableDirects[ numOfPassableDirects ] = direct;
+            numOfPassableDirects++;
+        }else if (this.cyclesFlag && this.canDestroy( this.normalizeX( x + this.DIRECT.x[direct]*2 ), this.normalizeY( y + this.DIRECT.y[direct]*2 ), direct) && !this.canGo( x , y, direct) && this.terrainMatrix[this.normalizeX( x + this.DIRECT.x[direct])][this.normalizeY( y + this.DIRECT.y[direct])].step == -1){
+            PassableDirects[ numOfPassableDirects ] = direct;
+            numOfPassableDirects++;
         }
     }
     if( 0 == numOfPassableDirects ) return -1;
@@ -255,12 +238,17 @@ Maze.prototype.randomPassableDestroyDirect = function( x , y ){
 
 
 Maze.prototype.canGo = function( x, y, direct ){
+
+    //if(this.terrainMatrix[ x ][ y ].bridge == 1)return true;
+    //if(this.terrainMatrix[this.normalizeX(x + this.DIRECT.x[ direct ])][this.normalizeY(y + this.DIRECT.y[direct] ) ].bridge == 1)return true;
     switch ( direct ){
         case this.DIRECT.RIGHT:
-            return !this.terrainMatrix[ ( x + 1 ) % this.width ][ y ].left_wall;
+            //return !this.terrainMatrix[ ( x + 1 ) % this.width ][ y ].left_wall;
+            return !this.terrainMatrix[ x ][ y ].right_wall;
             break;
         case this.DIRECT.DOWN:
-            return !this.terrainMatrix[ x ][ ( y + 1 ) % this.height ].up_wall;
+            //return !this.terrainMatrix[ x ][ ( y + 1 ) % this.height ].up_wall;
+            return !this.terrainMatrix[ x ][ y ].down_wall;
             break;
         case this.DIRECT.LEFT:
             return !this.terrainMatrix[ x ][ y ].left_wall;
@@ -311,31 +299,75 @@ Maze.prototype.normalizeY = function ( y ){
 Maze.prototype.createImageOfMaze = function(canvas){
    this.drawBackground( canvas ); 
    var ctx = canvas.getContext("2d");
+
+
    for ( var x = 0; x < this.width; x++ ) {
 		for ( var y = 0; y < this.height; y++ ) {
-            var kk = 1;
 			var positionOnSprite = this.getIndexOfTile( x , y ) * this.tiles.width;
 			ctx.drawImage(
                 this.fullSprite ,
                 positionOnSprite , 0 , this.tiles.width , this.tiles.width ,
                 x * this.tiles.width , y * this.tiles.width, this.tiles.width , this.tiles.width  );
+
+
+
+            if(this.terrainMatrix[ x ][ y ].bridge == 2) {
+                ctx.drawImage(
+                    this.assets.bridgesShadow,
+                    0, 0, this.tiles.width, this.tiles.width,
+                        x * this.tiles.width, y * this.tiles.width, this.tiles.width, this.tiles.width);
+            }
+            if(this.terrainMatrix[ x ][ y ].bridge == 1) {
+                ctx.drawImage(
+                    this.assets.bridges,
+                    0, 0, this.tiles.width, this.tiles.width,
+                        x * this.tiles.width, y * this.tiles.width, this.tiles.width, this.tiles.width);
+            }
 		}
    }
     
 
 
-}
+};
 
 Maze.prototype.drawBackground = function(canvas){
 	var ctx = canvas.getContext("2d");
     ctx.fillStyle = "#bbada0";
     ctx.fillRect( 0, 0 , this.width*this.tiles.width , this.height*this.tiles.width);
-}
+};
 
 Maze.prototype.draw = function ( canvas ){
 	var ctx = canvas.getContext("2d");
 	ctx.drawImage( this.canvas , 0 , 0 , this.width*this.tiles.width , this.height*this.tiles.width , 0 , 0 , this.playgroundWidth , this.playgroundHeight );
-}
+};
+
+
+Maze.prototype.createFullMazeSprite = function(){
+    this.sprite = this.assets.mazeSprite;
+
+    this.spriteCanvas = document.createElement("canvas");
+    this.spriteCTX = this.spriteCanvas.getContext("2d");
+    this.spriteCanvas.height = this.tiles.width;
+    this.spriteCanvas.width = this.tiles.width * 6;
+    this.spriteCTX.drawImage(this.sprite , 0 , 0);
+
+    this.fullSprite = document.createElement("canvas");
+    this.fullSpriteCTX = this.fullSprite.getContext("2d");
+    this.fullSprite.height = this.tiles.width;
+    this.fullSprite.width = this.tiles.width * 16;
+
+    for(var tile = 0; tile < this.tiles.quantity; tile++){
+        this.fullSpriteCTX.save();
+        this.fullSpriteCTX.translate(   tile * this.tiles.width  + this.tiles.width / 2 , this.tiles.width / 2);
+        this.fullSpriteCTX.rotate( this.tiles.turn[tile]);
+        this.fullSpriteCTX.drawImage(
+            this.spriteCanvas,
+                this.tiles.numb[tile] * this.tiles.width , 0 , this.tiles.width , this.tiles.width ,
+                - this.tiles.width / 2 ,  - this.tiles.width / 2 , this.tiles.width , this.tiles.width );
+        this.fullSpriteCTX.restore();
+    }
+};
+
 
 /*Maze.prototype.draw = function( canvas ){
     var ctx = canvas.getContext("2d");
@@ -386,3 +418,56 @@ Maze.prototype.draw = function( canvas ){
 
 };
 */
+
+/*
+ Maze.prototype.addBorderCages = function (){
+
+ this.width+=2;
+ this.height+=2;
+
+ for (var x = this.width - 2; x > 0 ; x--){
+ for (var y = this.height - 2; y > 0; y--){
+ this.terrainMatrix [ x ][ y ].left_wall = this.terrainMatrix [ x - 1 ][ y - 1 ].left_wall;
+ this.terrainMatrix [ x ][ y ].up_wall = this.terrainMatrix [ x - 1 ][ y - 1 ].up_wall;
+ this.terrainMatrix [ x ][ y ].right_wall = this.terrainMatrix [ x - 1 ][ y - 1 ].right_wall;
+ this.terrainMatrix [ x ][ y ].down_wall = this.terrainMatrix [ x - 1 ][ y - 1 ].down_wall;
+ this.terrainMatrix [ x ][ y ].bridge = this.terrainMatrix [ x - 1 ][ y - 1 ].bridge;
+ }
+ }
+ for (x = 0; x < this.width ; x++){
+ this.terrainMatrix [ x ][ 0 ].bridge = 0;
+ this.terrainMatrix [ x ][ this.height - 1 ].bridge = 0;
+ this.terrainMatrix [ x ][ 0 ].left_wall = true;
+ this.terrainMatrix [ x ][ this.height - 1 ].left_wall = true;
+
+ this.terrainMatrix [ this.normalizeX( x + 1 ) ][ 0 ].right_wall = true;
+ this.terrainMatrix [ this.normalizeX( x + 1 ) ][ this.height - 1 ].right_wall = true;
+
+
+ this.terrainMatrix [ x ][ 0 ].up_wall = this.terrainMatrix [ x ][ 1 ].up_wall;
+ this.terrainMatrix [ x ][ this.height - 1 ].up_wall = this.terrainMatrix [ x ][ 1 ].up_wall;
+
+ this.terrainMatrix [ x ][ this.height - 1 ].down_wall = this.terrainMatrix [ x ][ 1 ].up_wall;
+ this.terrainMatrix [ x ][ 0 ].down_wall = this.terrainMatrix [ x ][ 1 ].up_wall;
+ }
+
+ for (y = 0; y < this.height; y++){
+ this.terrainMatrix [ 0 ][ y ].bridge = 0;
+ this.terrainMatrix [ this.width - 1 ][ y ].bridge = 0;
+
+ this.terrainMatrix [ 0 ][ y ].up_wall = true;
+ this.terrainMatrix [ this.width - 1 ][ y ].up_wall = true;
+
+ this.terrainMatrix [ 0 ][ this.normalizeY( y - 1 ) ].down_wall = true;
+ this.terrainMatrix [ this.width - 1 ][ this.normalizeY( y - 1 ) ].down_wall = true;
+
+
+ this.terrainMatrix [ 0][ y ].left_wall = this.terrainMatrix [ 1 ][ y ].left_wall;
+ this.terrainMatrix [ this.width - 1 ][ y ].left_wall = this.terrainMatrix [ 1 ][ y ].left_wall;
+
+ this.terrainMatrix [ this.width - 1][ y ].right_wall = this.terrainMatrix [ 1 ][ y ].left_wall;
+ this.terrainMatrix [ 0 ][ y ].right_wall = this.terrainMatrix [ 1 ][ y ].left_wall;
+ }
+ };
+
+ */
