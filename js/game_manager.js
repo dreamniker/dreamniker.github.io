@@ -9,10 +9,10 @@ var maze;
 var playgroundWidth = 500;
 
 assets = new Assets();
-assets.mazeSprite.onload = function(){
+window.onload = function(){
 	maze=new Maze( playgroundWidth , playgroundWidth , mazeCanvas ,assets);
 	
-	var wh = 7;
+	var wh = 6;
 	
 	
 	maze.generate(wh,wh,0,0);
@@ -29,8 +29,9 @@ assets.mazeSprite.onload = function(){
 	
 		person.update(deltaTime);
 	
-		maze.draw(canvas);
+		maze.drawBackground(canvas);
 		person.draw(canvas);
+        maze.draw(canvas);
 	
 	
 		setTimeout(loop,10);

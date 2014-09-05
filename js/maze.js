@@ -12,6 +12,8 @@ function Maze( playgroundWidth , playgroundHeight , mazeCanvas , assets ){
 	*/
     this.assets = assets;
 	this.canvas = mazeCanvas;
+
+    this.background = this.assets.back;
 	//this.drawBackground(this.canvas);
 	
 	this.theme = "l";
@@ -45,7 +47,10 @@ function Maze( playgroundWidth , playgroundHeight , mazeCanvas , assets ){
 		UP:3,
         LAST:3,
         x:[1,0,-1,0],
-        y:[0,1,0,-1]
+        y:[0,1,0,-1],
+        opposite : function(direct){
+            return (direct + 2) % 4;
+        }
     };
     this.playgroundWidth = playgroundWidth;
     this.playgroundHeight = playgroundHeight;
@@ -110,24 +115,25 @@ Maze.prototype.generate = function( width , height , personPositionX , personPos
                 break;
             }
             if( this.terrainMatrix[this.normalizeX(this.destroyer.x + this.DIRECT.x[ direct ]) ][ this.normalizeY(this.destroyer.y + this.DIRECT.y[ direct ]) ].step == 0) {
-                this.destroyWall(this.destroyer.x, this.destroyer.y, direct);
+                this.destroyWall(this.destroyer.x, this.destroyer.y, direct , 3);
                 this.goDestroyer(direct , false);
             }else if (this.terrainMatrix[this.normalizeX(this.destroyer.x + this.DIRECT.x[ direct ]) ][ this.normalizeY(this.destroyer.y + this.DIRECT.y[ direct ]) ].step == -1){
-                this.destroyWall(this.destroyer.x, this.destroyer.y, direct);
+                this.destroyWall(this.destroyer.x, this.destroyer.y, direct , 3);
                 this.goDestroyer(direct , false);
-                this.destroyWall(this.destroyer.x, this.destroyer.y, direct);
+                this.destroyWall(this.destroyer.x, this.destroyer.y, direct , 3);
                 this.goDestroyer(direct , true);
-                this.destroyWall(this.destroyer.x, this.destroyer.y, direct);
+                this.destroyWall(this.destroyer.x, this.destroyer.y, direct , 3);
                 this.goDestroyer(direct , false);
             }
             else{
-                this.destroyWall(this.destroyer.x, this.destroyer.y, direct);
-                this.terrainMatrix[ this.destroyer.x ][ this.destroyer.y ].bridge = 2;
+                //ММОСТ МОСТ МОСТ МОСТ
+                this.destroyWall(this.destroyer.x, this.destroyer.y, direct , 1);
+                this.terrainMatrix[ this.destroyer.x ][ this.destroyer.y ].bridge += 1<<direct;
                 this.goDestroyer(direct , true);
-                this.destroyWall(this.destroyer.x, this.destroyer.y, direct);
-                this.terrainMatrix[ this.destroyer.x ][ this.destroyer.y ].bridge = 1;
+                this.destroyWall(this.destroyer.x, this.destroyer.y, direct  , 2);
+                this.terrainMatrix[ this.destroyer.x ][ this.destroyer.y ].bridge = 16;
                 this.goDestroyer(direct , false);
-                this.terrainMatrix[ this.destroyer.x ][ this.destroyer.y ].bridge = 2;
+                this.terrainMatrix[ this.destroyer.x ][ this.destroyer.y ].bridge += 1<<this.DIRECT.opposite(direct);
                 break;
             }
 
@@ -167,28 +173,46 @@ Maze.prototype.goDestroyer = function ( direct , isBridge ){
 
 
 
-Maze.prototype.destroyWall = function ( x, y, direct ){
-    switch ( direct ){
-        //Лабиринт цикличный, т.е. после x == width - 1 идет x == 0
-        case this.DIRECT.RIGHT:
-            this.terrainMatrix[ ( x + 1 ) % this.width ][ y ].left_wall = false;
-            this.terrainMatrix[ x ][ y ].right_wall = false;
-            break;
-        case this.DIRECT.DOWN:
-            this.terrainMatrix[ x ][ ( y + 1 ) % this.height ].up_wall = false;
-            this.terrainMatrix[ x ][ y ].down_wall = false;
-            break;
-        case this.DIRECT.LEFT:
-            this.terrainMatrix[ x ][ y ].left_wall = false;
-            this.terrainMatrix[ ( x - 1 + this.width ) % this.width ][ y ].right_wall = false;
-            break;
-        case this.DIRECT.UP:
-            this.terrainMatrix[ x ][ y ].up_wall = false;
-            this.terrainMatrix[ x ][ ( y - 1 + this.height ) % this.height ].down_wall = false;
-            break;
-        default :
-            console.log("ERROR");
-            break;
+Maze.prototype.destroyWall = function ( x, y, direct , tailsNumb ){
+    if((tailsNumb & 1) > 0) {
+        switch (direct) {
+            //Лабиринт цикличный, т.е. после x == width - 1 идет x == 0
+            case this.DIRECT.RIGHT:
+                this.terrainMatrix[ x ][ y ].right_wall = false;
+                break;
+            case this.DIRECT.DOWN:
+                this.terrainMatrix[ x ][ y ].down_wall = false;
+                break;
+            case this.DIRECT.LEFT:
+                this.terrainMatrix[ x ][ y ].left_wall = false;
+                break;
+            case this.DIRECT.UP:
+                this.terrainMatrix[ x ][ y ].up_wall = false;
+                break;
+            default :
+                console.log("ERROR");
+                break;
+        }
+    }
+    if((tailsNumb & 2) > 0) {
+        switch (direct) {
+            //Лабиринт цикличный, т.е. после x == width - 1 идет x == 0
+            case this.DIRECT.RIGHT:
+                this.terrainMatrix[ ( x + 1 ) % this.width ][ y ].left_wall = false;
+                break;
+            case this.DIRECT.DOWN:
+                this.terrainMatrix[ x ][ ( y + 1 ) % this.height ].up_wall = false;
+                break;
+            case this.DIRECT.LEFT:
+                this.terrainMatrix[ ( x - 1 + this.width ) % this.width ][ y ].right_wall = false;
+                break;
+            case this.DIRECT.UP:
+                this.terrainMatrix[ x ][ ( y - 1 + this.height ) % this.height ].down_wall = false;
+                break;
+            default :
+                console.log("ERROR");
+                break;
+        }
     }
 };
 
@@ -257,8 +281,7 @@ Maze.prototype.canGo = function( x, y, direct ){
             return !this.terrainMatrix[ x ][ y ].up_wall;
             break;
         default :
-            alert(direct);
-            console.log("ERROR");
+            console.log("ERROR",direct);
             break;
     }
 };
@@ -297,9 +320,8 @@ Maze.prototype.normalizeY = function ( y ){
 
 
 Maze.prototype.createImageOfMaze = function(canvas){
-   this.drawBackground( canvas ); 
+   //this.drawBackground( canvas );
    var ctx = canvas.getContext("2d");
-
 
    for ( var x = 0; x < this.width; x++ ) {
 		for ( var y = 0; y < this.height; y++ ) {
@@ -310,19 +332,21 @@ Maze.prototype.createImageOfMaze = function(canvas){
                 x * this.tiles.width , y * this.tiles.width, this.tiles.width , this.tiles.width  );
 
 
-
-            if(this.terrainMatrix[ x ][ y ].bridge == 2) {
-                ctx.drawImage(
-                    this.assets.bridgesShadow,
-                    0, 0, this.tiles.width, this.tiles.width,
-                        x * this.tiles.width, y * this.tiles.width, this.tiles.width, this.tiles.width);
+            for(var direct = this.DIRECT.FIRST; direct <= this.DIRECT.LAST; direct++) {
+                if ((this.terrainMatrix[ x ][ y ].bridge & (1<<direct)) > 0) {
+                    console.log(this.terrainMatrix[ x ][ y ].bridge ,direct);
+                    ctx.drawImage(
+                        this.bridgeShadowCanvas,
+                            this.tiles.width * direct, 0, this.tiles.width, this.tiles.width,
+                            x * this.tiles.width, y * this.tiles.width, this.tiles.width, this.tiles.width);
+                }
             }
-            if(this.terrainMatrix[ x ][ y ].bridge == 1) {
+            /*if(this.terrainMatrix[ x ][ y ].bridge == 1) {
                 ctx.drawImage(
                     this.assets.bridges,
                     0, 0, this.tiles.width, this.tiles.width,
                         x * this.tiles.width, y * this.tiles.width, this.tiles.width, this.tiles.width);
-            }
+            }*/
 		}
    }
     
@@ -332,8 +356,16 @@ Maze.prototype.createImageOfMaze = function(canvas){
 
 Maze.prototype.drawBackground = function(canvas){
 	var ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#bbada0";
-    ctx.fillRect( 0, 0 , this.width*this.tiles.width , this.height*this.tiles.width);
+    //ctx.fillStyle = "#f6e2ce";
+    //ctx.fillRect( 0, 0 , this.width*this.tiles.width , this.height*this.tiles.width);
+    var w = (( this.playgroundWidth / this.background.width ) >> 0 ) + 1;
+    var h = (( this.playgroundHeight / this.background.height ) >> 0 ) + 1;;
+    for( var i = 0; i < w; i++){
+        for ( var j = 0; j < h ; j++){
+            ctx.drawImage(this.background , i * this.background.width , j * this.background.height);
+        }
+    }
+
 };
 
 Maze.prototype.draw = function ( canvas ){
@@ -366,6 +398,22 @@ Maze.prototype.createFullMazeSprite = function(){
                 - this.tiles.width / 2 ,  - this.tiles.width / 2 , this.tiles.width , this.tiles.width );
         this.fullSpriteCTX.restore();
     }
+
+    this.bridgeShadowCanvas = document.createElement("canvas");
+    this.bridgeShadowCanvas.width = this.tiles.width * 4;
+    this.bridgeShadowCanvas.height = this.tiles.width;
+    this.bridgeShadowCTX = this.bridgeShadowCanvas.getContext("2d");
+
+    for(tile = 0; tile < 4; tile ++){
+        this.bridgeShadowCTX.save();
+        this.bridgeShadowCTX.translate(this.tiles.width * (tile + 0.5), this.tiles.width / 2);
+        this.bridgeShadowCTX.rotate(Math.PI / 2 * tile);
+        this.bridgeShadowCTX.drawImage(this.assets.bridgesShadow, 0 , 0 , this.tiles.width , this.tiles.width ,
+                - this.tiles.width / 2 ,  - this.tiles.width / 2 , this.tiles.width , this.tiles.width );
+        this.bridgeShadowCTX.restore();
+    };
+
+
 };
 
 

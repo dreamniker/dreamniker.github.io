@@ -55,7 +55,7 @@ Person.prototype.goInDirect = function( direct ) {
     var tileY = this.tileY;
     this.deltaX = 0;
     this.deltaY = 0;
-    while( this.maze.canGo( tileX , tileY , direct) ){
+    while( this.canGo( tileX , tileY , direct) ){
         //Тайл в который нужно попасть
         tileX = tileX + DIRECT.x[direct];
         tileY = tileY + DIRECT.y[direct];
@@ -72,6 +72,28 @@ Person.prototype.goInDirect = function( direct ) {
         //Расстояние которое нужно пройти
         this.deltaX += DIRECT.x[direct] * (maze.cageWidth + maze.wallWidth);
         this.deltaY += DIRECT.y[direct] * (maze.cageWidth + maze.wallWidth);
+
+        if(this.maze.terrainMatrix[ tileX ][ tileY ].bridge == 16){
+            if(this.canGo(this.maze.normalizeX(tileX + this.maze.DIRECT.x[direct]) , this.maze.normalizeY(tileY + this.maze.DIRECT.y[direct]) , this.maze.DIRECT.opposite(direct))){
+
+                tileX = tileX + DIRECT.x[direct];
+                tileY = tileY + DIRECT.y[direct];
+
+                if(tileX != ( tileX + maze.width ) % maze.width) {
+                    tileX = ( tileX + maze.width ) % maze.width;
+                    this.deltaX += 2 * DIRECT.x[direct] * (maze.cageWidth + maze.wallWidth);
+                }
+                if(tileY != ( tileY + maze.height ) % maze.height){
+                    tileY = ( tileY + maze.height ) % maze.height;
+                    this.deltaY +=2 * DIRECT.y[direct] * (maze.cageWidth + maze.wallWidth);
+                }
+
+                //Расстояние которое нужно пройти
+                this.deltaX += DIRECT.x[direct] * (maze.cageWidth + maze.wallWidth);
+                this.deltaY += DIRECT.y[direct] * (maze.cageWidth + maze.wallWidth);
+            }
+        }
+
         if(this.canTurn( tileX , tileY , direct ) ) break;
     }
     if(tileX != this.tileX || tileY != this.tileY) {
@@ -84,10 +106,14 @@ Person.prototype.goInDirect = function( direct ) {
 };
 
 Person.prototype.canTurn = function ( x , y , direct ){
-    if(this.maze.terrainMatrix[x][y].bridge == 1) return false;
-    if ( this.maze.canGo ( x , y , (direct + 1) % 4 ) ) return true;
-    if ( this.maze.canGo ( x , y , (direct - 1 + 4) % 4 ) ) return true;
+    if(this.maze.terrainMatrix[x][y].bridge == 16) return false;
+    if ( this.canGo ( x , y , (direct + 1) % 4 ) ) return true;
+    if ( this.canGo ( x , y , (direct - 1 + 4) % 4 ) ) return true;
     return false;
+};
+
+Person.prototype.canGo = function( x, y, direct ){
+    return this.maze.canGo( x , y , direct);
 };
 
 Person.prototype.nextMove = function(){

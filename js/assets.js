@@ -6,8 +6,8 @@ function Assets (){
     this.bridgesShadow = new Image ();
     this.bridgesShadow.src = "img/bridgesShadow.png";
 
-    this.bridges = new Image ();
-    this.bridges.src = "img/bridge.png";
+    this.back = new Image ();
+    this.back.src = "img/back1.jpg";
 	
 	this.mazeSprite = new Image ();
 	this.mazeSprite.src = "img/TilesSprite.png";
