@@ -134,7 +134,7 @@ Maze.prototype.generate = function( width , height , personPositionX , personPos
                 this.terrainMatrix[ this.destroyer.x ][ this.destroyer.y ].bridge = 16;
                 this.goDestroyer(direct , false);
                 this.terrainMatrix[ this.destroyer.x ][ this.destroyer.y ].bridge += 1<<this.DIRECT.opposite(direct);
-                break;
+                continue;
             }
 
             //Если длина цепи слишком большая, прервать построение этой цепи и начать следующую
