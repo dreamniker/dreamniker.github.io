@@ -57,6 +57,14 @@ document.onkeydown = function(e){
 };
 
 document.addEventListener('touchstart', function(event) {
+	
+	person.goInDirect(DIRECT.LEFT);
+    person.goInDirect(DIRECT.UP);
+    person.goInDirect(DIRECT.RIGHT);
+    person.goInDirect(DIRECT.DOWN);
+    
+	
+	
   	start.x=event.targetTouches[0].pageX;
  	start.y=event.targetTouches[0].pageY;
 	ld.set(0,0);
