@@ -15,8 +15,23 @@
 
 <!-- Put this div tag to the place, where the Comments block will be -->
 <div id="vk_comments"></div>
+<div class="fb-comments" data-href="http://dreamniker.github.io" data-width="665" data-numposts="5"></div>
+
+
 <script type="text/javascript">
 VK.Widgets.Comments("vk_comments", {limit: 10, width: "665", attach: "*"});
 </script>
+
+<div id="fb-root"></div>
+<script>
+(function(d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) return;
+  js = d.createElement(s); js.id = id;
+  js.src = "//connect.facebook.net/ru_RU/sdk.js#xfbml=1&version=v2.8";
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));
+</script>
+
 </body>
 </html>
